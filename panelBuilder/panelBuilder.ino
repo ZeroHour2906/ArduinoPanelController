@@ -6,62 +6,66 @@
 #define dispatchEnableLight 2
 #define dispatchButton 3
 #define canOpenHarnessLight 4
-#define gateToggleButton 5
+#define canCloseHarnessLight 5
 #define harnessToggleButton 6
-#define platformToggleButton 7
-#define flyerToggleButton 8
+#define estopIndicator 7
+#define canOpenGateLight 8
+#define canCloseGateLight 9 
+#define gateToggleButton 11
+#define platformToggleButton 12
+#define flyerToggleButton 13
 
 // Creating global variables
 struct stateContainer{
-    String canDispatch;
-    String canCloseHarness;
-    String canOpenHarness;
-    String canCloseGates;
-    String canOpenGates;
-    String canLowerPlatform;
-    String canRaisePlatform;
-    String canLockFlyer;
-    String canUnlockFlyer;
+    String canDispatch = "false";
+    String canCloseHarness = "false";
+    String canOpenHarness = "false";
+    String eStopped = "false";
+    String canCloseGates = "false";
+    String canOpenGates = "false";
+    String canLowerPlatform = "false";
+    String canRaisePlatform = "false";
+    String canLockFlyer = "false";
+    String canUnlockFlyer = "false";
 };
 
 struct lightStates{
-    bool dispatchLights;
-    bool closeHarness;
-    bool openHarness;
-    bool closeGates;
-    bool openGates;
-    bool lowerPlatform;
-    bool raisePlatform;
-    bool lockFlyer;
-    bool unlockFlyer;
+    bool dispatchLights = false;
+    bool closeHarness = false;
+    bool openHarness = false;
+    bool estopLight = false;
+    bool closeGates = false;
+    bool openGates = false;
+    bool lowerPlatform = false;
+    bool raisePlatform = false;
+    bool lockFlyer = false;
+    bool unlockFlyer = false;
 };
 
 stateContainer currentStates;
 lightStates currentIndicatorState;
 Timer flashingTimer;
 
-int indicatorPins[] = {dispatchEnableLight,canOpenHarnessLight};
+int indicatorPins[] = {dispatchEnableLight,canCloseHarnessLight,canOpenHarnessLight,estopIndicator,canCloseGateLight,canOpenGateLight};
 
 void setup(){
     // Setting pin modes
+    pinMode(estopIndicator, OUTPUT);
     pinMode(dispatchEnableLight,OUTPUT);
     pinMode(dispatchButton,INPUT);
     pinMode(canOpenHarnessLight,OUTPUT);
+    pinMode(canCloseHarnessLight, OUTPUT);
     pinMode(harnessToggleButton,INPUT);
+    pinMode(canOpenGateLight, OUTPUT);
+    pinMode(canCloseGateLight, OUTPUT);
+    pinMode(gateToggleButton, INPUT);
     // Starting serial monitor
     Serial.begin(9600);
-    // Test
-    // currentIndicatorState.dispatchLights = true;
-    // currentIndicatorState.openHarness = true;
-    currentStates.canDispatch = "true";
-    currentStates.canCloseHarness = "false";
-    currentStates.canOpenHarness = "true";
-    currentStates.canOpenGates = "false";
 }
 
 void loop(){
     // Checking if message has been sent
-    if (Serial.available() > 0){
+    if (Serial.available() > 10){
         // If true then update the current state
         updateState();
     }
@@ -77,15 +81,17 @@ void loop(){
 }
 
 void updateState(){
-    // Creating local variables
+    // Creating Json document to contain the decoded json
     JsonDocument decodedJson;
-    String recievedStates;
+    // Getting message in th serial monitor
+    String recievedStates = Serial.readStringUntil("}");
     // Decoding the json values
     DeserializationError error = deserializeJson(decodedJson,recievedStates);
     // Extracting to char types
     const char* canDispatch = decodedJson["dispatch"];
     const char* closeHarness = decodedJson["closeHarness"];
     const char* openHarness = decodedJson["openHarness"];
+    const char* estop = decodedJson["estop"];
     const char* closeGates = decodedJson["closeGates"];
     const char* openGates = decodedJson["openGates"];
     const char* lowerPlatform = decodedJson["lowerPlatform"];
@@ -96,6 +102,7 @@ void updateState(){
     currentStates.canDispatch = canDispatch;
     currentStates.canCloseHarness = closeHarness;
     currentStates.canOpenHarness = openHarness;
+    currentStates.eStopped = estop;
     currentStates.canCloseGates = closeGates;
     currentStates.canOpenGates = openGates;
     currentStates.canLowerPlatform = lowerPlatform;
@@ -144,15 +151,17 @@ void sendCommand(){
         return;
     }
     // Turning into json data
-    outBoundJson["commad"] = commandToSend;
+    outBoundJson["command"] = commandToSend;
     // Printing command into serial monitor
     serializeJson(outBoundJson,Serial);
+    // Terminating the line
+    Serial.println();
 }
 
 String checkCommand(){
     String requestedCommand = "";
     // Checking if the dispatch button has been presseed
-    if (digitalRead(dispatchButton) == HIGH){
+    if (digitalRead(dispatchButton) == HIGH && currentStates.canDispatch == "true"){
         // If true send dispatch into serial monitor
         requestedCommand = "dispatch";
     }
