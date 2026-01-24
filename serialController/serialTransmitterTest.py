@@ -1,11 +1,12 @@
 from serialMonitorHandler import serialMessenger
 import time,json
 
-allValues = {"dispatch":"false",
-             "closeHarness":"false",
+allValues = {"dispatch":"true",
+             "closeHarness":"true",
              "openHarness":"true",
-             "closeGates":"false",
-             "openGates":"false",
+             "estop":"true",
+             "closeGates":"true",
+             "openGates":"true",
              "lowerPlatform":"false",
              "raisePlatform":"false",
              "unlockFlyer":"false",
