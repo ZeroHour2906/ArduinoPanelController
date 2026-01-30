@@ -18,36 +18,23 @@
 // Creating structures
 struct stateContainer {
   String canDispatch = "false";
-  String canCloseHarness = "false";
   String canOpenHarness = "false";
+  String canCloseHarness = "false";
   String eStopped = "false";
-  String canCloseGates = "false";
   String canOpenGates = "false";
+  String canCloseGates = "false";
   String canLowerPlatform = "false";
   String canRaisePlatform = "false";
   String canLockFlyer = "false";
   String canUnlockFlyer = "false";
 };
 
-struct lightStates {
-  bool dispatchLights = false;
-  bool closeHarness = false;
-  bool openHarness = false;
-  bool estopLight = false;
-  bool closeGates = false;
-  bool openGates = false;
-  bool lowerPlatform = false;
-  bool raisePlatform = false;
-  bool lockFlyer = false;
-  bool unlockFlyer = false;
-};
-
 // Creating global objects
 stateContainer currentStates;
-lightStates currentIndicatorState;
 Timer flashingTimer;
+bool currentLightState;
 
-int indicatorPins[] = { dispatchEnableLight, canCloseHarnessLight, canOpenHarnessLight, estopIndicator, canCloseGateLight, canOpenGateLight };
+int indicatorPins[] = { dispatchEnableLight,canOpenHarnessLight,canCloseHarnessLight, estopIndicator,canOpenGateLight,canCloseGateLight};
 
 void setup() {
   // Setting pin modes
@@ -115,29 +102,25 @@ void updateState() {
 void invertLightState() {
   // Creating pointer from the first element in both the light state and current states structure
   String* enabledCurrentlyPointer = &currentStates.canDispatch;
-  bool* illumiatedCurrentlyPointer = &currentIndicatorState.dispatchLights;
   // Looping until all the indicators have been iterated over
   for (int counter : indicatorPins) {
     // Derefering the pointer to get the value
     String currentEnabled = *enabledCurrentlyPointer;
     // Checking if the light is to be enabled
-    if (currentEnabled == "false") {
-      // Incrementing the pointers
+    if (currentEnabled == "false"){
+      digitalWrite(counter, LOW);
+      // Incrementing the pointer
       enabledCurrentlyPointer += 1;
-      illumiatedCurrentlyPointer += 1;
       // Contining past this indicator
       continue;
     }
-    // Dereferencing the pointer
-    bool currentState = *illumiatedCurrentlyPointer;
-    // Updating the pointer to be the inverse of iself
-    *illumiatedCurrentlyPointer = !currentState;
+    // Setting the state of the indicator
+    digitalWrite(counter, currentLightState);
     // Incrementing the pointers
     enabledCurrentlyPointer += 1;
-    illumiatedCurrentlyPointer += 1;
-    // Setting the state of the indicator
-    digitalWrite(counter, currentState);
   }
+  // Setting the light state to the inverse of itself
+  currentLightState = !currentLightState;
 }
 
 void sendCommand() {
