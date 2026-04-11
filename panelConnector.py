@@ -34,8 +34,14 @@ telemetryMessage = requestTypes.GetTelemetryMessage()
 eStopMessage = requestTypes.SetEmergencyStopMessage()
 
 #Creating serial monitor and telemetry handlers
+print("Connecting to NL2 telemetry server")
 transmitter = telemetryHandler.TelTransmitter("localhost",15151)
+print("Connected to server\nConnecting to Arduino")
 serial = serialMonitorHandler.serialMessenger(timeout=None)
+
+# Delay to allow the Arduino to reset
+time.sleep(5)
+print("Connected to Arduino")
 
 #Creating statemessages
 currentCoasterIndex = 0
@@ -123,9 +129,6 @@ def handleMessage(sentMessage,stationState):
         eStopMessage.setEmergencyStop(currentCoasterIndex,1)
         sendRecieve(eStopMessage)
 
-# Delay to allow the Arduino to reset
-time.sleep(5)
-
 #Running the loop to manage the program
 try:
     while True:
@@ -149,4 +152,12 @@ try:
             handleMessage(json.loads(recievedMessage)["command"],stationState)
 except KeyboardInterrupt:
     #Close program in the event of keyboard interrupt
-    quit()
+    pass
+
+except (TimeoutError,AttributeError):
+    print("Unable to find values. Please ensure that No Limits 2 is running in play mode")
+
+finally:
+    # Closing the connections
+    serial.shutDown()
+    transmitter.disconnect()
