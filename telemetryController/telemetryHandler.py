@@ -33,6 +33,12 @@ class TelTransmitter:
         except OSError:
             self.connected = True
             pass
+    
+    def checkConnection(self):
+        """Method to check whether the object is connected
+        @parameters - None
+        @returns - Bool (Connected state)"""
+        return self.connected
             
     """Method to disconnect from the address
     Parameters - None
@@ -76,6 +82,9 @@ class TelTransmitter:
             self.connected = False
 
     def sendRecieve(self,message):
+        """Method to send and wait for a message
+        @parameters - message (The message to be sent)
+        @returns - The message sent back from the address"""
         #Sending the message
         self.send(message)
         #Getting the response and returning it
