@@ -54,10 +54,15 @@ class serialMessenger:
         self.connected = False
     
     def __exit__(self):
-        """When program is closed - close the connection"""
+        """When program is closed - close the connection
+        @parameters - None
+        @returns - None"""
         self.shutDown()
     
     def checkConnection(self):
+        """Method to check whether the serial monitor is connected
+        @parameters - None
+        @returns - Bool (Connected state)"""
         return self.connected
     
     def sendMessage(self,command):
