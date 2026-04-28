@@ -6,37 +6,46 @@ Class to handle communication of telemetry data from a specific port
 import socket
 
 """Class to control the telemetry transmitter
-Parameters - address (string - required address to connect to), port (int - required port to attempt to connect to)"""
+Parameters - address (string - required address to connect to), port (int - required port to attempt to connect to), startConnect (bool - Whether to connect to the target on init - Default = True)"""
 class TelTransmitter:
-    def __init__(self,address,port):
+    def __init__(self,address,port,startConnect = True):
         self.address = address
         self.port = port
         self.connection = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
         self.connection.settimeout(3)
-        self.connect()
+        # Connecting if requested
+        if startConnect == True:
+            self.connect()
     
     """Method to connect to the address provided
     Parameters - None
-    Returns - None"""
+    Returns - None or ConnectionRefusedError or TimeoutError"""
     def connect(self):
         try:
             #Attempting to connect to the address
             self.connection.connect((self.address,self.port))
             self.connected = True
-        except ConnectionRefusedError:
+
+        except (ConnectionRefusedError,TimeoutError) as e:
             self.connected = False
-        
-        except TimeoutError:
-            self.connected = False
-    
+            return e
+
+        except OSError:
+            self.connected = True
+            pass
+            
     """Method to disconnect from the address
     Parameters - None
     Returns - None"""
     def disconnect(self):
-        #Disconnecting from the address
-        self.connection.shutdown(socket.SHUT_RDWR)
-        self.connection.close()
-        self.connected = False
+        try:
+            #Disconnecting from the address
+            self.connection.shutdown(socket.SHUT_RDWR)
+            self.connection.close()
+        except OSError:
+            pass
+        finally:
+            self.connected = False
     
     """Method to send a message to the connected address
     Parameters - Message - (Bytes - The messge that is required to be sent)
@@ -46,8 +55,11 @@ class TelTransmitter:
         if self.connected == False:
             #If false then attempt to connect
             self.connect()
-        #Sending message
-        self.connection.send(message)
+        try:
+            #Sending message
+            self.connection.send(message)
+        except ConnectionAbortedError:
+            self.connected = False
     
     """Method to recieved a message from the connected address
     Parameters - bufferSize (int - size of the buffer to read on. Default = 100)
@@ -57,8 +69,11 @@ class TelTransmitter:
         if self.connected == False:
             #If false then attempt to connect
             self.connect()
-        #Checking for message
-        return self.connection.recv(bufferSize)
+        try:
+            #Checking for message
+            return self.connection.recv(bufferSize)
+        except ConnectionAbortedError:
+            self.connected = False
 
     def sendRecieve(self,message):
         #Sending the message
