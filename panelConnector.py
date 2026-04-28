@@ -1,7 +1,6 @@
 #Importing required modules
 import telemetryController.telemetryHandler as telemetryHandler
 import telemetryController.requestTypes as requestTypes
-import telemetryController.responseTypes as responses
 import serialController.serialMonitorHandler as serialMonitorHandler
 import json
 import time
@@ -38,7 +37,7 @@ stationStateMessage = requestTypes.GetStationStateMessage()
 telemetryMessage = requestTypes.GetTelemetryMessage()
 eStopMessage = requestTypes.SetEmergencyStopMessage()
 
-#Creating statemessages
+#Creating state messages
 currentCoasterIndex = 0
 currentStationIndex = 0
 currentCoasterName = ""
