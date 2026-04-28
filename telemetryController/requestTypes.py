@@ -180,7 +180,7 @@ class IdleMessage(NoData):
     def __init__(self):
         super().__init__()
         self.typeName = "idle"
-        self.typeId = 3
+        self.typeId = 0
         self.generateBuffer()
     
 """Class to create request message for get version message"""
@@ -188,7 +188,7 @@ class GetVersionMessage(NoData):
     def __init__(self):
         super().__init__()
         self.typeName = "get version"
-        self.typeId = 5
+        self.typeId = 4
         self.generateBuffer()
 
 """Class to create request message for get telemetry"""
