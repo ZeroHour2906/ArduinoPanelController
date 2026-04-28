@@ -1,5 +1,10 @@
 #Importing required modules
-import telemetryController.telemetryHandler as telemetryHandler,telemetryController.requestTypes as requestTypes,serialController.serialMonitorHandler as serialMonitorHandler,json,time
+import telemetryController.telemetryHandler as telemetryHandler
+import telemetryController.requestTypes as requestTypes
+import telemetryController.responseTypes as responses
+import serialController.serialMonitorHandler as serialMonitorHandler
+import json
+import time
 
 #Creating dictionary for default values
 defaultValues = {
@@ -33,16 +38,6 @@ stationStateMessage = requestTypes.GetStationStateMessage()
 telemetryMessage = requestTypes.GetTelemetryMessage()
 eStopMessage = requestTypes.SetEmergencyStopMessage()
 
-#Creating serial monitor and telemetry handlers
-print("Connecting to NL2 telemetry server")
-transmitter = telemetryHandler.TelTransmitter("localhost",15151)
-print("Connected to server\nConnecting to Arduino")
-serial = serialMonitorHandler.serialMessenger(timeout=None)
-
-# Delay to allow the Arduino to reset
-time.sleep(5)
-print("Connected to Arduino")
-
 #Creating statemessages
 currentCoasterIndex = 0
 currentStationIndex = 0
@@ -51,6 +46,9 @@ currentCoasterName = ""
 def sendRecieve(requestMessage):
     #Sending the message and getting the response
     response = transmitter.sendRecieve(requestMessage.buffer)
+    # Checking if transmitter has disconnected
+    if transmitter.connected == False:
+        return
     #Decrypting the message and returning
     return requestTypes.Message.getData(response)
 
@@ -131,33 +129,72 @@ def handleMessage(sentMessage,stationState):
 
 #Running the loop to manage the program
 try:
+    # Creating and performing set up for both serial and telemetry connections
+    print("Performing connector setup")
+
+    #Creating telemetry handlers
+    print("Connecting to NL2 telemetry server")
+    transmitter = telemetryHandler.TelTransmitter("localhost",15151)
+
+    # Attempting to connect to the socket
+    if transmitter.connected == False:
+        # Unable to connect to server
+        print("Unable to connect to server")
+    else:
+        # Connected
+        print("Connected to server")
+
+    # Creating serial monitor handlers
+    print("Connecting to Arduino")
+    serial = serialMonitorHandler.serialMessenger(timeout=None)
+
+    # Checking if serial monitor has connected
+    if serial.checkConnection() == True:
+        # Successfully connected. Inform user and wait for reset
+        print("Successfully connected to Arduino\nAwaiting Serial reset")
+        time.sleep(5)
+        print("Serial connection reset")
+    else:
+        # Unable to connect
+        print("Unable to connect to Serial Monitor")
+    
+    # Informing user setup is complete and how to exit
+    print("Connector setup complete - press CTRL+C to exit")
+
     while True:
-        #Checking which coaster is active
-        currentCoasterIndex,currentStationIndex,currentCoasterName = getClosetCoaster()
-        #Getting the station state
-        stationState = getStationState()
-        #Updating the new values dictionary
-        differentValues,newValues = updateValues(stationState.__dict__,newValues)
-        #Checking if the values were different
-        if differentValues == True:
-            #If true then send the dictionary to the arduino serial monitor
-            serial.sendMessage(json.dumps(newValues))
-            #Replacing the previous values dictionary with the newValues one
-            previousValues = newValues.copy()
-        #Checking if a message has been sent from arduino serial monitor
-        recievedMessage = serial.readMessageUntil(b"}",10)
-        if recievedMessage != "":
-            #Decoding the message
-            recievedMessage.decode(encoding="utf8").rstrip()
-            handleMessage(json.loads(recievedMessage)["command"],stationState)
+        # Checking if the telemetry connection and arduino connections are still alive
+        if transmitter.connected == True and serial.checkConnection() == True:
+            try:
+                #Checking which coaster is active
+                currentCoasterIndex,currentStationIndex,currentCoasterName = getClosetCoaster()
+                #Getting the station state
+                stationState = getStationState()
+                #Updating the new values dictionary
+                differentValues,newValues = updateValues(stationState.__dict__,newValues)
+
+                #Checking if the values were different
+                if differentValues == True:
+                    #If true then send the dictionary to the arduino serial monitor
+                    serial.sendMessage(json.dumps(newValues))
+                    #Replacing the previous values dictionary with the newValues one
+                    previousValues = newValues.copy()
+
+                #Checking if a message has been sent from arduino serial monitor
+                recievedMessage = serial.readMessageUntil(b"}",10)
+                if recievedMessage != "":
+                    #Decoding the message
+                    recievedMessage.decode(encoding="utf8").rstrip()
+                    handleMessage(json.loads(recievedMessage)["command"],stationState)
+
+            except AttributeError:
+                # Moving on in the event of an AttributeError
+                continue
+
 except KeyboardInterrupt:
-    #Close program in the event of keyboard interrupt
-    pass
-
-except (TimeoutError,AttributeError):
-    print("Unable to find values. Please ensure that No Limits 2 is running in play mode")
-
-finally:
+    # Program has been requested to close
+    print("Closing connections")
     # Closing the connections
     serial.shutDown()
     transmitter.disconnect()
+    # Displaying connections closed result
+    print("Connections closed")
