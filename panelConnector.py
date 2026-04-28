@@ -47,7 +47,7 @@ def sendRecieve(requestMessage):
     #Sending the message and getting the response
     response = transmitter.sendRecieve(requestMessage.buffer)
     # Checking if transmitter has disconnected
-    if transmitter.connected == False:
+    if transmitter.checkConnection() == False:
         return
     #Decrypting the message and returning
     return requestTypes.Message.getData(response)
@@ -84,7 +84,7 @@ def updateValues(stationStatus,newValues):
     #Checking if the dictionarys are different and returning result
     return newValues != previousValues,newValues
 
-def handleMessage(sentMessage,stationState):
+def handleMessage(sentMessage):
     #Checking what message was sent
     if sentMessage == "dispatch":
         #If dispatch was sent then dispatch the train
@@ -137,7 +137,7 @@ try:
     transmitter = telemetryHandler.TelTransmitter("localhost",15151)
 
     # Attempting to connect to the socket
-    if transmitter.connected == False:
+    if transmitter.checkConnection() == False:
         # Unable to connect to server
         print("Unable to connect to server")
     else:
@@ -163,7 +163,7 @@ try:
 
     while True:
         # Checking if the telemetry connection and arduino connections are still alive
-        if transmitter.connected == True and serial.checkConnection() == True:
+        if transmitter.checkConnection() == True and serial.checkConnection() == True:
             try:
                 #Checking which coaster is active
                 currentCoasterIndex,currentStationIndex,currentCoasterName = getClosetCoaster()
@@ -184,11 +184,21 @@ try:
                 if recievedMessage != "":
                     #Decoding the message
                     recievedMessage.decode(encoding="utf8").rstrip()
-                    handleMessage(json.loads(recievedMessage)["command"],stationState)
+                    handleMessage(json.loads(recievedMessage)["command"])
 
             except AttributeError:
-                # Moving on in the event of an AttributeError
-                continue
+                # Ignoring in the event of an AttributeError
+                pass
+        
+        # Checking if the transmitter is not connected
+        elif transmitter.checkConnection() == False:
+            # Attempting to connect to the address
+            transmitter.connect()
+
+        # Checking if the serial monitor is not connected
+        elif serial.checkConnection() == False:
+            # Attempting to connect to the serial monitor
+            serial.setUp(0,9600)
 
 except KeyboardInterrupt:
     # Program has been requested to close
